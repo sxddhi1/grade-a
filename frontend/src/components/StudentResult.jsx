@@ -965,14 +965,74 @@ export default function StudentResult() {
                                                     </div>
                                                     <button
                                                         className="primary-btn download-notes-btn"
-                                                        onClick={() => {
-                                                            const element = document.createElement("a");
-                                                            const file = new Blob([selectedDoc.notes], {type: 'text/markdown'});
-                                                            element.href = URL.createObjectURL(file);
-                                                            element.download = `${selectedDoc.filename.replace('.pdf', '')}_Summary.md`;
-                                                            document.body.appendChild(element);
-                                                            element.click();
-                                                            document.body.removeChild(element);
+                                                        onClick={async () => {
+                                                            const loadHtml2Pdf = () => {
+                                                                return new Promise((resolve) => {
+                                                                    if (window.html2pdf) {
+                                                                        resolve(window.html2pdf);
+                                                                        return;
+                                                                    }
+                                                                    const script = document.createElement('script');
+                                                                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+                                                                    script.async = true;
+                                                                    script.onload = () => resolve(window.html2pdf);
+                                                                    document.body.appendChild(script);
+                                                                });
+                                                            };
+
+                                                            const html2pdf = await loadHtml2Pdf();
+                                                            const sourceElement = document.querySelector('.notes-viewer-body');
+                                                            if (!sourceElement) return;
+
+                                                            // Create a styled off-screen container to isolate document stylesheet styles from the global page styles
+                                                            const container = document.createElement('div');
+                                                            container.innerHTML = `
+                                                                <div style="padding: 30px 40px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #2d3748; background: #ffffff; min-height: 297mm; box-sizing: border-box;">
+                                                                    <div style="border-bottom: 2px solid #3182ce; padding-bottom: 12px; margin-bottom: 25px;">
+                                                                        <h1 style="font-size: 24px; font-weight: bold; color: #2b6cb0; margin: 0 0 6px 0; line-height: 1.2;">
+                                                                            ${selectedDoc.filename.replace('.pdf', '')}
+                                                                        </h1>
+                                                                        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #718096;">
+                                                                            <span>AI STUDY GUIDE &amp; SUMMARY NOTES</span>
+                                                                            <span>Uploaded: ${new Date(selectedDoc.uploaded_at).toLocaleDateString()}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div class="pdf-content-body" style="font-size: 13px; line-height: 1.6; color: #2d3748;">
+                                                                        ${sourceElement.innerHTML}
+                                                                    </div>
+                                                                    <div style="margin-top: 40px; padding-top: 15px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #a0aec0; text-align: center;">
+                                                                        Powered by GradeA AI Study Portal
+                                                                    </div>
+                                                                </div>
+                                                            `;
+
+                                                            const styles = document.createElement('style');
+                                                            styles.innerHTML = `
+                                                                .pdf-content-body h1, .pdf-content-body h2, .pdf-content-body h3 { color: #2d3748; font-weight: bold; margin-top: 18px; margin-bottom: 8px; page-break-after: avoid; }
+                                                                .pdf-content-body h1 { font-size: 18px; border-bottom: 1px solid #edf2f7; padding-bottom: 4px; }
+                                                                .pdf-content-body h2 { font-size: 15px; }
+                                                                .pdf-content-body h3 { font-size: 13px; }
+                                                                .pdf-content-body p { margin-top: 0; margin-bottom: 12px; text-align: justify; }
+                                                                .pdf-content-body ul, .pdf-content-body ol { margin-top: 0; margin-bottom: 12px; padding-left: 20px; }
+                                                                .pdf-content-body li { margin-bottom: 4px; }
+                                                                .pdf-content-body code { background: #edf2f7; padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 11px; }
+                                                                .pdf-content-body pre { background: #edf2f7; padding: 10px; border-radius: 6px; font-family: monospace; font-size: 11px; overflow-x: auto; margin-bottom: 12px; }
+                                                                .pdf-content-body blockquote { border-left: 3px solid #cbd5e0; padding-left: 12px; color: #4a5568; margin-top: 0; margin-bottom: 12px; font-style: italic; }
+                                                                .pdf-content-body table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+                                                                .pdf-content-body th, .pdf-content-body td { border: 1px solid #e2e8f0; padding: 6px 10px; text-align: left; }
+                                                                .pdf-content-body th { background: #f7fafc; font-weight: bold; }
+                                                            `;
+                                                            container.appendChild(styles);
+
+                                                            const opt = {
+                                                                margin:       [10, 10, 10, 10],
+                                                                filename:     `${selectedDoc.filename.replace('.pdf', '')}_Summary.pdf`,
+                                                                image:        { type: 'jpeg', quality: 0.98 },
+                                                                html2canvas:  { scale: 2, useCORS: true },
+                                                                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                                                            };
+
+                                                            html2pdf().set(opt).from(container).save();
                                                         }}
                                                         style={{ width: 'auto', padding: '0.45rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px', fontSize: '0.85rem', background: 'var(--success)' }}
                                                     >
